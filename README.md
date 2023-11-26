@@ -16,6 +16,10 @@ usage:
 By default, the program looks in /usr/share/dict for a dictionary-file.
 If none is found, you can select one with '-f'.
 
+On the left you see a laser beam. On the right of the screen, words scroll to the left.
+When a word hits the laser beam, your score drops. So quickly type the letters of the
+words!
+
 
 screenshot:
 ----------
