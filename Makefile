@@ -1,10 +1,10 @@
-# Released under Apache License v2.0
+# Released under MIT license
 
-VERSION=0.2
+VERSION=0.3
 
-DEBUG=-g -pedantic #-pg #-fprofile-arcs
+DEBUG=-ggdb3 -Wall -pedantic
 LDFLAGS=-lncurses $(DEBUG)
-CFLAGS+=-O2 -Wall -DVERSION=\"$(VERSION)\" $(DEBUG)
+CFLAGS+=-Ofast -Wall -DVERSION=\"$(VERSION)\" $(DEBUG)
 
 OBJS=banihstypos.o
 
