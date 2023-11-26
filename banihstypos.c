@@ -36,19 +36,18 @@ void version(void)
 double get_ts(void)
 {
 	struct timeval ts;
-	struct timezone tz;
 
-	if (gettimeofday(&ts, &tz) == -1)
+	if (gettimeofday(&ts, NULL) == -1)
 	{
 		endwin();
 		fprintf(stderr, "gettimeofday() failed with error %s\n", strerror(errno));
 		exit(1);
 	}
 
-	return (((double)ts.tv_sec) + ((double)ts.tv_usec)/1000000.0);
+	return ((double)ts.tv_sec + (double)ts.tv_usec)/1000000.0;
 }
 
-char * get_word(char **words, int n_words)
+char * get_word(const char **words, size_t n_words)
 {
 	return strdup(words[lrand48() % n_words]);
 }
@@ -168,7 +167,7 @@ void init_bg_stars(int *stars)
 	}
 }
 
-void game_loop(char **words, int n_words)
+void game_loop(const char **words, size_t n_words)
 {
 	char *word = get_word(words, n_words);
 	double delay = start_delay;
@@ -291,17 +290,20 @@ void game_loop(char **words, int n_words)
 	}
 }
 
-char * find_words_file(void)
+void add_file(const char ***filenames, size_t *n, const char *name)
 {
-	static char filename_buffer[4096];
+	*filenames = (const char **)realloc(*filenames, (*n + 1) * sizeof(char *));
+	(*filenames)[*n] = name;
+	(*n)++;
+}
+
+void find_words_file(const char ***filenames, size_t *n)
+{
 	struct dirent *de;
 	DIR *dir = opendir(DICT_DIR);
 
 	if (!dir)
 	{
-		if (errno == ENOENT)
-			return NULL;
-	
 		fprintf(stderr, "Default directory which is searched for words lists (" DICT_DIR ") cannot be opened: %s\n", strerror(errno));
 		exit(1);
 	}
@@ -311,16 +313,15 @@ char * find_words_file(void)
 		if (strcmp(de -> d_name, ".") != 0 &&
 		    strcmp(de -> d_name, "..") != 0)
 		{
+			char filename_buffer[4096];
 			snprintf(filename_buffer, sizeof(filename_buffer), DICT_DIR "/%s", de -> d_name);
 
-			return filename_buffer;
+			add_file(filenames, n, strdup(filename_buffer));
 		}
 	}
-
-	return NULL;
 }
 
-void load_words_file(char *file, char lowercase_only, char ***words, int *n_words)
+void load_words_file(const char *file, char lowercase_only, const char ***words, size_t *n_words)
 {
 	FILE *fh = fopen(file, "r");
 	if (!fh)
@@ -328,6 +329,8 @@ void load_words_file(char *file, char lowercase_only, char ***words, int *n_word
 		fprintf(stderr, "Cannot open words file %s for read access: %s\n", file, strerror(errno));
 		exit(1);
 	}
+
+	printf("Loading file %s...\n", file);
 
 	while(!feof(fh))
 	{
@@ -383,11 +386,13 @@ void help(void)
 
 int main(int argc, char *argv[])
 {
-	char **words = NULL;
-	int n_words = 0;
-	char *words_file = NULL;
+	const char **words = NULL;
+	size_t n_words = 0;
+	const char **words_files = NULL;
+	size_t n_files = 0;
 	char lowercase_only = 0;
-	int c;
+	int c = -1;
+	size_t loop = 0;
 
 	while((c = getopt(argc, argv, "hVf:l")) != -1)
 	{
@@ -402,7 +407,7 @@ int main(int argc, char *argv[])
 				return 0;
 
 			case 'f':
-				words_file = optarg;
+				add_file(&words_files, &n_files, strdup(optarg));
 				break;
 
 			case 'l':
@@ -415,10 +420,10 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (!words_file)
-		words_file = find_words_file();
+	if (n_files == 0)
+		find_words_file(&words_files, &n_files);
 
-	if (!words_file)
+	if (n_files == 0)
 	{
 		fprintf(stderr, "No file with words found. Please select one with the -f commandline parameter.\n");
 		return 1;
@@ -426,7 +431,8 @@ int main(int argc, char *argv[])
 
 	srand48(get_ts() + (get_ts() * 1000000) + getpid());
 
-	load_words_file(words_file, lowercase_only, &words, &n_words);
+	for(loop=0; loop<n_files; loop++)
+		load_words_file(words_files[loop], lowercase_only, &words, &n_words);
 
 	game_loop(words, n_words);
 
