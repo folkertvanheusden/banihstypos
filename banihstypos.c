@@ -1,8 +1,9 @@
 /* (C) folkert van heusden <mail@vanheusden.com>
-   Released under apache license v2.0
+   Released under MIT license
 */
 
 #include <ncurses.h>
+#include <poll.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -44,7 +45,7 @@ double get_ts(void)
 		exit(1);
 	}
 
-	return ((double)ts.tv_sec + (double)ts.tv_usec)/1000000.0;
+	return (double)ts.tv_sec + (double)ts.tv_usec/1000000.0;
 }
 
 char * get_word(const char **words, size_t n_words)
@@ -169,11 +170,12 @@ void init_bg_stars(int *stars)
 
 void game_loop(const char **words, size_t n_words)
 {
+	struct pollfd fds[] = { { 0, POLLIN, 0 } };
 	char *word = get_word(words, n_words);
 	double delay = start_delay;
 	int word_cnt = 0;
 	int word_x = win_w - 1;
-	double start_ts;
+	double start_ts = get_ts();
 	int points = 0;
 	int pointsadd = 2;
 	int stars[N_STARS * 2];
@@ -183,43 +185,20 @@ void game_loop(const char **words, size_t n_words)
 
 	init_ncurses();
 
-	start_ts = get_ts();
-
 	for(;;)
 	{
-		struct timeval tv;
-		fd_set fds;
-		int rc;
 		double cur_delay = delay - (get_ts() - start_ts);
 
 		draw_screen(stars, word_x, word, word_cnt, delay, points, n_words);
 
-		FD_ZERO(&fds);
-		FD_SET(0, &fds);
-
-		if (cur_delay <= 0)
+		if (cur_delay > 0 && poll(fds, 1, cur_delay * 1000) == -1)
 		{
-			tv.tv_usec = 10000;
-			tv.tv_sec = 0;
-		}
-		else
-		{
-			tv.tv_sec = cur_delay;
-			tv.tv_usec = (cur_delay - tv.tv_sec) * 1000000;
-		}
-
-		rc = select(1, &fds, NULL, NULL, &tv);
-		if (rc == -1)
-		{
-			if (errno == EINTR || errno == EAGAIN)
-				continue;
-
 			endwin();
-			fprintf(stderr, "select() failed with error %s\n", strerror(errno));
-			exit(1);
+			fprintf(stderr, "poll failed: %s\n", strerror(errno));
+			exit(0);
 		}
 
-		if ((start_ts + delay) < get_ts())
+		if (start_ts + delay < get_ts())
 		{
 			word_x--;
 
@@ -240,7 +219,7 @@ void game_loop(const char **words, size_t n_words)
 			start_ts = get_ts();
 		}
 
-		if (rc > 0 && FD_ISSET(0, &fds))
+		if (fds[0].revents)
 		{
 			int c = getch();
 

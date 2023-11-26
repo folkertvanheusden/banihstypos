@@ -17,6 +17,12 @@ By default, the program looks in /usr/share/dict for a dictionary-file.
 If none is found, you can select one with '-f'.
 
 
+screenshot:
+----------
+
+![(screenshot)](images/banihstypos.png)
+
+
 license:
 -------
 MIT
