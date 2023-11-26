@@ -30,7 +30,7 @@ double delay_mult = 0.79;
 
 void version(void)
 {
-	printf("banihstypos v" VERSION ", (C) 2007 by folkert@vanheusden.com\n\n");
+	printf("banihstypos v" VERSION ", (C) 2007-2023 by folkert@vanheusden.com\n\n");
 }
 
 double get_ts(void)
@@ -107,7 +107,7 @@ void draw_screen(int *stars, int word_x, char *word, int word_cnt, double cur_de
 	wattroff(stdscr, COLOR_PAIR(4));
 
 	/* print word */
-	mvwprintw(stdscr, win_h / 2, word_x, buffer);
+	mvwprintw(stdscr, win_h / 2, word_x, "%s", buffer);
 
 	/* draw laser base */
 	wattron(stdscr, COLOR_PAIR(3));
@@ -333,7 +333,9 @@ void load_words_file(char *file, char lowercase_only, char ***words, int *n_word
 	{
 		char read_buffer[4096], *start = read_buffer, *space, *lf;
 
-		fgets(read_buffer, sizeof(read_buffer), fh);
+		if (!fgets(read_buffer, sizeof(read_buffer), fh))
+			break;
+
 		read_buffer[win_w] = 0x00;
 
 		*words = realloc(*words, sizeof(char *) * (*n_words + 1));
